@@ -1,0 +1,29 @@
+{
+  "name": "guardduty-slack-notify",
+  "version": "1.0.0",
+  "description": "Lambda Function for GuardDuty Slack Notifications",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ventz/guardduty-slack-notify.git"
+  },
+  "keywords": [
+    "amazon",
+    "aws",
+    "guardduty",
+    "slack",
+    "notify",
+    "security",
+    "events",
+    "alerts",
+    "lambda"
+  ],
+  "author": "Ventz Petkov",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "request": "^2.88.0"
+  }
+}
