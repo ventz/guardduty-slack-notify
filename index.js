@@ -16,13 +16,13 @@ const slackChannel = "#guardduty-alerts";
 const request = require('request');
 
 exports.handler = async (event) => {
-	//console.log(JSON.stringify(event, null, 4));
+    //console.log(JSON.stringify(event, null, 4));
 
-	// //////////////////////////////////////////////////////////////////////////////////////////
-	// EXTRACT JSON																			   //
-	// //////////////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////////////////
+    // EXTRACT JSON                                                                            //
+    // //////////////////////////////////////////////////////////////////////////////////////////
     // let id = event.id;
-	// Using this for the sake of "dynamic-ness"
+    // Using this for the sake of "dynamic-ness"
     let detailType = event["detail-type"];
     // These are for the account that's running GuardDuty
     // let account = event.account;
@@ -33,73 +33,76 @@ exports.handler = async (event) => {
     let resources = event.resources;
 
     // Expand JSON - this we very much care about
-    let detail = event.detail;
+    let findings = event.detail.findings;
+    
+    for(let detail of findings) {
 
-    // Sub-JSON for "detail"
-    let id = detail.id;
-    let accountId = detail.accountId;
-    let region = detail.region;
-    let severity = detail.severity;
-    let type = detail.type
-    let title = detail.title;
-    let description = detail.description;
-    let time = detail.time;
+        // Sub-JSON for "detail"
+        let id = detail.id;
+        let accountId = detail.accountId;
+        let region = detail.region;
+        let severity = detail.severity;
+        let type = detail.type
+        let title = detail.title;
+        let description = detail.description;
+        let time = detail.time;
 
-    // Note: this is unique schema for each "type" of details
-    // Probably should "pretty" JSON it and attach it as is
-    let resource = detail.resource;
-    let resourceType = resource.resourceType;
+        // Note: this is unique schema for each "type" of details
+        // Probably should "pretty" JSON it and attach it as is
+        let resource = detail.resource;
+        let resourceType = resource.resourceType;
 
-    let service = detail.service;
-    let serviceCount = detail.service.count;
-    let eventFirstSeen = detail.service.eventFirstSeen;
-    let eventLastSeen = detail.service.eventLastSeen;
+        let service = detail.service;
+        let serviceCount = detail.service.count;
+        let eventFirstSeen = detail.service.eventFirstSeen;
+        let eventLastSeen = detail.service.eventLastSeen;
 
-    // Note: this is unique schema for each "type" of details
-    // Probably should "pretty" JSON it and attach it as is
-    // However - provide actionType since that's informative/unique
-    let action = service.action;
-    let actionType = action.actionType;
-	// //////////////////////////////////////////////////////////////////////////////////////////
+        // Note: this is unique schema for each "type" of details
+        // Probably should "pretty" JSON it and attach it as is
+        // However - provide actionType since that's informative/unique
+        let action = service.action;
+        let actionType = action.actionType;
+        // //////////////////////////////////////////////////////////////////////////////////////////
 
 
-	// Implement color codes per Amazon's classification of high/medium/low
-	// NOTE: 9.0 to 10.0 are reserved for future use
-    // https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_findings.html#guardduty_findings-severity
-	if(severity >= 7 && severity <= 8.9) { color = 'danger'; }
-    else if(severity >= 5 && severity <= 6.9) { color = 'warning'; }
-    else if(severity >= 0.1 && severity <= 3.9) { color = 'good'; }
+        // Implement color codes per Amazon's classification of high/medium/low
+        // NOTE: 9.0 to 10.0 are reserved for future use
+        // https://docs.aws.amazon.com/guardduty/latest/ug/guardduty_findings.html#guardduty_findings-severity
+        if(severity >= 7 && severity <= 8.9) { color = 'danger'; }
+        else if(severity >= 5 && severity <= 6.9) { color = 'warning'; }
+        else if(severity >= 0.1 && severity <= 3.9) { color = 'good'; }
 
-	let payload = [
-		{title: "Type:", value: type, short: true},
-		{title: "Resource Type:", value: resourceType, short: true},
-		{title: "Action Type:", value: actionType, short: true},
-		{title: "Severity:", value: severity, short: true},
-		{title: "Title:", value: title, short: false},
-		{title: "Description:", value: description, short: false},
-		{title: "First Seen:", value: eventFirstSeen, short: true},
-		{title: "Last Seen:", value: eventLastSeen, short: true},
-		{title: "Resource:", value: JSON.stringify(resource, null, 4), short: false},
-		{title: "Action:", value: JSON.stringify(action, null, 4), short: false},
-		{title: "Count:", value: serviceCount, short: false}
-	];
+        let payload = [
+            {title: "Type:", value: type, short: true},
+            {title: "Resource Type:", value: resourceType, short: true},
+            {title: "Action Type:", value: actionType, short: true},
+            {title: "Severity:", value: severity, short: true},
+            {title: "Title:", value: title, short: false},
+            {title: "Description:", value: description, short: false},
+            {title: "First Seen:", value: eventFirstSeen, short: true},
+            {title: "Last Seen:", value: eventLastSeen, short: true},
+            {title: "Resource:", value: JSON.stringify(resource, null, 4), short: false},
+            {title: "Action:", value: JSON.stringify(action, null, 4), short: false},
+            {title: "Count:", value: serviceCount, short: false}
+        ];
 
-    const guardDutyUrl = "https://console.aws.amazon.com/guardduty/home?region=";
+        const guardDutyUrl = "https://console.aws.amazon.com/guardduty/home?region=";
 
-	let attachment = [
-		{
-			"fallback": "",
-			"pretext": "",
-			"title": detailType + ": "+type+" | " + resourceType +" | Severity: "+severity,
-			"title_link": guardDutyUrl+region+"#/findings?search="+id,
-			"text": accountId + " ("+region+")",
-			"color": color,
-			"fields": payload,
-			"ts": getEpoch(),
-		  }
-	];
+        let attachment = [
+            {
+                "fallback": "",
+                "pretext": "",
+                "title": detailType + ": "+type+" | " + resourceType +" | Severity: "+severity,
+                "title_link": guardDutyUrl+region+"#/findings?search="+id,
+                "text": accountId + " ("+region+")",
+                "color": color,
+                "fields": payload,
+                "ts": getEpoch(),
+              }
+        ];
 
-	await slackNotify(attachment);
+        await slackNotify(attachment);
+    }
 
     const response = {
         statusCode: 200,
